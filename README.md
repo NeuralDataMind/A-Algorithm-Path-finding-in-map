@@ -1,1 +1,1 @@
-# A-Algorithm-Path-finding-in-map
+# A* Algorithm Path finding in map
