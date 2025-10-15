@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telangana Route Finder</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #map { height: 600px; width: 100%; border: 1px solid #ccc; }
+        .controls { margin-bottom: 15px; }
+        input { padding: 8px; width: 250px; }
+        button { padding: 8px 15px; }
+        #loader { display: none; } /* For loading indicator */
+    </style>
+</head>
+<body>
+    <h1>📍 Telangana Route Finder</h1>
+    <div class="controls">
+        <input type="text" id="start" placeholder="Enter Start Location (e.g., Charminar)">
+        <input type="text" id="end" placeholder="Enter End Location (e.g., Golconda Fort)">
+        <button onclick="findRoute()">Find Route</button>
+        <span id="loader">Calculating...</span>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map centered on Telangana
+        const map = L.map('map').setView([17.8749, 79.1132], 8);
+
+        // Add a tile layer (the map background)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let routeLayer = L.layerGroup().addTo(map); // A layer to hold our route and markers
+
+        async function findRoute() {
+            const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+            const loader = document.getElementById('loader');
+
+            if (!start || !end) {
+                alert("Please enter both a start and end location.");
+                return;
+            }
+
+            // Show loader and clear previous route
+            loader.style.display = 'inline';
+            routeLayer.clearLayers();
+
+            try {
+                // Send a request to our Flask backend
+                const response = await fetch('/get_route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ start: start, end: end }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Draw the route line on the map
+                    const routeLine = L.polyline(data.route, { color: 'blue' }).addTo(routeLayer);
+                    map.fitBounds(routeLine.getBounds()); // Zoom to fit the route
+
+                    // Add markers for start and end points
+                    L.marker(data.start_coords).addTo(routeLayer).bindPopup('<b>Start</b>');
+                    L.marker(data.end_coords).addTo(routeLayer).bindPopup('<b>End</b>');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('An unexpected error occurred. Please try again.');
+            } finally {
+                // Hide loader
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
